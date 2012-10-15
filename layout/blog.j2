@@ -1,0 +1,7 @@
+{% extends "base.j2" %}
+
+{% filter markdown|typogrify -%}
+{% mark post -%}
+	{% block article -%}{%- endblock article %}
+{%- endmark %}
+{%- endfilter %}
