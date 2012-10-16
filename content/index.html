@@ -1,3 +1,12 @@
 ---
+title: index
+listable: false
 extends: base.j2
+default_block: content
 ---
+
+	<ul>
+		{% for res in resource.node.walk_resources_sorted_by_time() %}
+		<li><a href="{{ res.full_url }}">{{ res.meta.title }}</a> created on {{ res.meta.created }}.</li>
+		{% endfor %}
+	</ul>
