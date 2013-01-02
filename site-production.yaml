@@ -9,7 +9,7 @@ plugins:
     - hyde.ext.plugins.sorter.SorterPlugin
 markdown:
     extensions:
-        - codehilite
+        - codehilite(force_linenos=True)
 sorter:
     time:
         attr:
