@@ -1,0 +1,141 @@
+---
+title: iptables for 2 public interfaces
+description: iptables
+extends: blog.j2
+default_block: article
+listable: true
+created: !!timestamp '2012-10-21 18:47:00'
+---
+
+Had to install a router to connect the internal LAN to the Internet. Since there was an ancient server just idling around, I wanted to try to setup the connection via that machine before coughing the money for a proper router.
+
+First step, I set up [Debian squeeze][debian] x64 on the server.
+
+Off to `iptables`!
+
+### The Setup
+
+- eth0 connected to the LAN, ip `192.168.0.1/16`, the router machine is the gateway, `.1`
+- eth1 connected to fiber, public ip `111.111.111.111/24` - high priority traffic only, gateway at `.1`
+- eth2 connected to DSL, public ip `88.88.88.88/24` - this will be the default Internet connection, gateway at `.1`
+
+Note that the numbers are chosen just as an example.
+
+There's also another app server for hosting stuff inside the LAN. This one is intended to be accessible via the Intenet, doesn't really matter on which interface.
+
+### The Filtering Table
+
+First, drop almost everything through the `filter` table:
+
+    $ iptables -t filter -P INPUT DROP
+    $ iptables -t filter -P FORWARD DROP
+    $ iptables -t filter -P OUTPUT ACCEPT
+    
+So basically accept all outgoing traffic, while rejecting anything else (incoming traffic or traffic being routed by the machine).
+
+Accept server connections initiated from this machine (the router):
+
+    iptables -t filter -A INPUT -i lo -j ACCEPT
+
+Since the server will act as a router, accept connections from the local network:
+
+    iptables -t filter -A INPUT -i eth0 -j ACCEPT
+
+Also accept replies to connections initiated by machines inside the LAN; note that these packets arrive as replies to conversations initiated on the inside network:
+
+    iptables -t filter -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+For debugging reasons, I'm also allowing pings:
+
+    iptables -t filter -A INPUT -p icmp -j ACCEPT
+
+Given the fact that the `nat` table is going to route the internal connections through the fiber - `eth1` - and through the DSL line - `eth2` - let packets pass through the `FORWARD` chain accordingly.
+
+LAN through fiber:
+
+    iptables -t filter -A FORWARD -i eth0 -o eth1 -j ACCEPT
+
+LAN through DSL:
+
+    iptables -t filter -A FORWARD -i eth0 -o eth2 -j ACCEPT
+
+Now, keep in mind that after `nat` does its job, there will be packets going into `filter:FORWARD` that originate in `eth1` and `eth2` and are addressed to `eth0`:
+
+    iptables -t filter -A FORWARD -i eth1 -o eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+A similar rule should be in place for `eth2` - the DSL line, but I decided to expose the internal app server on that public IP address (`88.88.88.88`), so I'll just accept everything:
+
+    iptables -t filter -A FORWARD -i eth2 -o eth0 -j ACCEPT
+
+Since the packets can enter and pass through the router OK now, time to setup the logic for diverting them to their appropriate destination.
+
+## NAT and Mark
+
+Packets exiting the router from `eth1` should be SNATted as from `111.111.111.111`, and the ones from `eth2` as `88.88.88.88`.
+
+    iptables -t nat -A POSTROUTING -o eth1 -j SNAT --to-source 111.111.111.111
+    iptables -t nat -A POSTROUTING -o eth2 -j SNAT --to-source 88.88.88.88
+
+Also, since the app server connected in the LAN to this router will be visible on the Internet at `88.88.88.88`, DNAT packets entering the router from the DSL line:
+
+    iptables -t nat -A PREROUTING -i eth2 -j DNAT --to-destination 192.168.0.3
+
+The thing is to use the `mark` table to signal _high priority_ connections. For example, Remote Desktop Protocol (port 3389):
+
+    iptables -t mangle -A PREROUTING -p tcp -m tcp -s 192.168.0.0/16 --dport 3389 -j MARK  --set-mark 1
+
+So a connection request reaches the router from the LAN, connection directed to some Internet address, port 3389. That connection will be marked. The problem is now to route it through `eth1` instead of the default `eth0`. That is done via [iproute2][iproute2].
+
+First thing, a _prioritized_ routing table, in `/etc/iproute2/rt_tables`:
+
+    #
+    # reserved values
+    #
+    255     local
+    254     main
+    253     default
+    0       unspec
+    #
+    # local
+    #
+    #1      inr.ruhep
+    101     prioritized
+
+Then define the table; add all the rules from _main_ that don't concern default routes or the fiber channel (it will be constructed manually below):
+
+    ip route show table main | grep -Ev '(^default|eth1)' | while read ROUTE ; do
+        ip route add table prioritized $ROUTE
+    done
+
+    ip route add table prioritized 111.111.111.1 dev eth1 src 111.111.111.111
+    ip route add table prioritized default via 111.111.111.1
+
+In the above example, I am using `111.111.111.1` as the gateway address supplied by the ISP for `111.111.111.111`.
+
+This should be the output of `ip route show table main`:
+
+    111.111.111.0/24 dev eth1  proto kernel  scope link  src 111.111.111.111 
+    88.88.88.0/24 dev eth2  proto kernel  scope link  src 88.88.88.88 
+    192.168.0.0/16 dev eth0  proto kernel  scope link  src 192.168.0.1 
+    default via 88.88.88.1 dev eth2 
+
+And for `ip route show table prioritized`:
+
+    111.111.111.1 dev eth1  scope link  src 111.111.111.111 
+    88.88.88.0/24 dev eth2  proto kernel  scope link  src 88.88.88.88 
+    192.168.0.0/16 dev eth0  proto kernel  scope link  src 192.168.0.1 
+    default via 111.111.111.1 dev eth1 
+
+Packets marked with `0x1` from `mangle` will be routed with the _prioritized_ table
+
+    ip rule del fwmark 1
+    ip rule del from 111.111.111.111
+    ip rule add fwmark 1 table prioritized
+    ip rule add from 111.111.111.111 lookup prioritized
+
+The mark flag is decimal in `iptables`, and hex in `iproute`; look it up! Obviously, `0x1 == 1`.
+
+Now everything should be set!
+
+[debian]: http://debian.org
+[iproute2]: http://en.wikipedia.org/wiki/Iproute2

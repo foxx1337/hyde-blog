@@ -1,9 +1,13 @@
 <!doctype html>
 <html>
 <head>
+	<title>{{ resource.meta.title }}</title>
 	<link rel="stylesheet" href="media/css/style.css">
 </head>
 <body>
+	{% if resource.meta.title %}
+	<h1>{{ resource.meta.title|e }}</h1>
+	{% endif %}
 	{% block content %}{% endblock content %}
 
 </body>
