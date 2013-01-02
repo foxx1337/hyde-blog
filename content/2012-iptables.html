@@ -27,9 +27,9 @@ There's also another app server for hosting stuff inside the LAN. This one is in
 
 First, drop almost everything through the `filter` table:
 
-    $ iptables -t filter -P INPUT DROP
-    $ iptables -t filter -P FORWARD DROP
-    $ iptables -t filter -P OUTPUT ACCEPT
+    iptables -t filter -P INPUT DROP
+    iptables -t filter -P FORWARD DROP
+    iptables -t filter -P OUTPUT ACCEPT
     
 So basically accept all outgoing traffic, while rejecting anything else (incoming traffic or traffic being routed by the machine).
 

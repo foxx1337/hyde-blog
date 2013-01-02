@@ -50,22 +50,16 @@ img {
 }
 
 h1, h2, h3, h4, h5, h6 {
-	font-weight: normal;
+	font-weight: bold;
 	color: #111;
 	line-height: 1em;
 	margin: 0;
 }
 
-h1 {
-	color: #21519c;
-	font-size: 2.25em;
-	font-weight: bold;
-}
-
-h4, h5, h6 { font-weight: bold; }
-h1 { font-size: 2.5em; }
-h2 { font-size: 2em; border-bottom: 1px solid silver; padding-bottom: 5px; }
-h3 { font-size: 1.5em; }
+h3, h4, h5, h6 { font-weight: normal; }
+h1 { font-size: 2.5em; color: #21519c; }
+h2 { font-size: 2em; color: #21519c; border-bottom: 1px solid silver; padding-bottom: 5px; }
+h3 { font-size: 1.5em; color: #21519c; }
 h4 { font-size: 1.2em; }
 h5 { font-size: 1em; }
 h6 { font-size: 0.9em; }
@@ -91,9 +85,6 @@ pre, code, kbd, samp {
 	color: #000; 
 	font-family: monospace; 
 	font-size: 0.88em; 
-	border-radius: 3px;
-	background-color: #F8F8F8;
-	border: 1px solid #CCC; 
 }
 
 pre { white-space: pre; white-space: pre-wrap; word-wrap: break-word; padding: 5px; }
@@ -119,7 +110,7 @@ dd { margin: 0 0 0 2em; }
 img { border: 0; -ms-interpolation-mode: bicubic; vertical-align: middle; }
 
 table { border-collapse: collapse; border-spacing: 0; }
-td { vertical-align: top; }
+td { vertical-align: top; padding: 0; }
 
 @media only screen and (min-width: 480px) {
 	body { font-size: 14px; }
@@ -146,6 +137,37 @@ td { vertical-align: top; }
 	h2, h3 { page-break-after: avoid; }
 }
 
+.linenodiv {
+	background-color: #F8F8F8;
+	border-top-left-radius: 3px;
+	border-bottom-left-radius: 3px;
+	border: solid #CCC;	
+	border-width: 1px 0 1px 1px;
+	border-right: 0.5em solid #CCC;
+}
+.linenodiv > pre {
+	color: #808080;
+	margin: 0;
+}
+.codehilite {
+	overflow-x: auto;
+	background-color: #F8F8F8;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
+	border: solid #CCC;
+	border-width: 1px 1px 1px 0;
+}
+.codehilite::-webkit-scrollbar { width: 5px; height: 5px; }
+.codehilite::-webkit-scrollbar-track-piece { -webkit-border-radius: 3px; }
+.codehilite::-webkit-scrollbar-thumb:vertical, .codehilite::-webkit-scrollbar-thumb:horizontal { height:5px; background-color:#666; -webkit-border-radius:3px; }
+.codehilite > pre {
+	width: 46em;
+	word-wrap: normal;
+	white-space: pre;
+	margin: 0 2em 0 0;
+}
+
+/* directly from pygments.formatters.HtmlFormatter(linenos=True, style='colorful').get_style_defs() */
 .hll { background-color: #ffffcc }
 .c { color: #808080 } /* Comment */
 .err { color: #F00000; background-color: #F0A0A0 } /* Error */
