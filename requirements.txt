@@ -1,0 +1,6 @@
+hyde==0.8.4
+Jinja2==2.6
+Markdown>=2.1.1
+argparse==1.2.1
+Pygments>=1.4
+-e git://github.com/hyde/typogrify.git@b83867fe26dca76e0db6833b1cc2271228e62548#egg=typogrify-dev
